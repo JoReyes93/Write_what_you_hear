@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Write What You Hear</title>
+  <style>
+    /* Light Mode (Default) */
+    :root {
+      --primary: #6366f1;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --input-bg: #ffffff;
+      --secondary-btn-bg: #e0e7ff;
+      --secondary-btn-text: #4338ca;
+      --success-bg: #dcfce7;
+      --success-border: #86efac;
+      --success-text: #15803d;
+      --danger-bg: #fee2e2;
+      --danger-border: #fca5a5;
+      --danger-text: #b91c1c;
+    }
+
+    /* Dark Mode Palette */
+    [data-theme="dark"] {
+      --primary: #818cf8;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+      --input-bg: #0b1120;
+      --secondary-btn-bg: #312e81;
+      --secondary-btn-text: #c7d2fe;
+      --success-bg: #052e16;
+      --success-border: #166534;
+      --success-text: #4ade80;
+      --danger-bg: #450a0a;
+      --danger-border: #991b1b;
+      --danger-text: #f87171;
+    }
+
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; transition: background-color 0.2s, color 0.2s; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 1rem; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 480px; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .header-text h1 { font-size: 1.35rem; margin: 0 0 0.25rem 0; color: var(--primary); }
+    .header-text p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+    
+    .theme-toggle { background: var(--card); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .tab-btn { flex: 1; padding: 0.6rem; border: 1px solid var(--border); background: var(--card); border-radius: 8px; font-weight: 600; cursor: pointer; color: var(--muted); }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .card { background: var(--card); border-radius: 12px; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid var(--border); margin-bottom: 1rem; }
+    
+    .audio-controls { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.25rem; }
+    .btn-circle { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .btn-circle.secondary { background: var(--secondary-btn-bg); color: var(--secondary-btn-text); width: 44px; height: 44px; align-self: center; font-size: 1rem; }
+    
+    textarea, input[type="text"] { width: 100%; background: var(--input-bg); color: var(--text); border: 1.5px solid var(--border); border-radius: 8px; padding: 0.75rem; font-size: 1rem; outline: none; }
+    textarea:focus, input[type="text"]:focus { border-color: var(--primary); }
+    
+    .input-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .btn { padding: 0.65rem 1rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+    .btn-primary { background: var(--primary); color: white; flex: 1; }
+    .btn-mic { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
+    .btn-mic.listening { background: #dc2626; color: white; animation: pulse 1s infinite; }
+
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+    .feedback { margin-top: 1rem; padding: 1rem; border-radius: 8px; display: none; }
+    .feedback.show { display: block; }
+    .feedback-correct { background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success-text); }
+    .feedback-wrong { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-text); }
+    .diff-box { font-size: 1.05rem; line-height: 1.6; margin-top: 0.5rem; }
+    .diff-correct { color: var(--success-text); font-weight: bold; }
+    .diff-wrong { color: var(--danger-text); text-decoration: line-through; }
+    .diff-expected { color: var(--primary); font-weight: bold; text-decoration: underline; }
+
+    /* Sentence Manager */
+    .sentence-list { list-style: none; padding: 0; margin-top: 1rem; max-height: 350px; overflow-y: auto; }
+    .sentence-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; color: var(--text); }
+    .sentence-item button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-text">
+      <h1>🎧 Write What You Hear</h1>
+      <p>Train your English listening & speaking</p>
+    </div>
+    <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('practice')">Practice</button>
+    <button class="tab-btn" onclick="switchTab('manage')">My Sentences (<span id="count">0</span>)</button>
+  </div>
+
+  <!-- PRACTICE SCREEN -->
+  <div id="practiceTab">
+    <div class="card">
+      <div class="audio-controls">
+        <button class="btn-circle secondary" title="Listen Slow" onclick="speakCurrent(0.65)">🐢</button>
+        <button class="btn-circle" title="Listen Normal" onclick="speakCurrent(1.0)">🔊</button>
+      </div>
+
+      <textarea id="userInput" rows="3" placeholder="Type or speak what you hear..."></textarea>
+
+      <div class="input-actions">
+        <button id="micBtn" class="btn btn-mic" title="Speak instead of typing" onclick="toggleSpeechRecognition()">🎙️ Speak</button>
+        <button class="btn btn-primary" onclick="checkAnswer()">Check</button>
+      </div>
+
+      <div id="feedback" class="feedback">
+        <strong id="feedbackTitle"></strong>
+        <div id="feedbackContent" class="diff-box"></div>
+        <button class="btn btn-primary" style="margin-top: 0.8rem; width:100%;" onclick="nextSentence()">Next Sentence ➡️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE SENTENCES SCREEN -->
+  <div id="manageTab" style="display: none;">
+    <div class="card">
+      <input type="text" id="newSentenceInput" placeholder="Add a new sentence here..." />
+      <button class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="addSentence()">Add Sentence</button>
+      
+      <ul id="sentenceList" class="sentence-list"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- THEME MANAGEMENT ---
+  function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.getElementById('themeToggle').innerText = '☀️';
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.getElementById('themeToggle').innerText = '🌙';
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.getElementById('themeToggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+  }
+
+  initTheme();
+
+  // --- APP LOGIC ---
+  const DEFAULT_SENTENCES = [
+    "Could you please repeat that again?",
+    "I would like a cup of coffee with oat milk.",
+    "The weather forecast says it might rain later today.",
+    "Practice makes perfect when learning a new language.",
+    "She has been living in London for two years."
+  ];
+
+  let sentences = JSON.parse(localStorage.getItem('my_sentences')) || DEFAULT_SENTENCES;
+  let currentIndex = 0;
+  let recognition;
+  let isListening = false;
+
+  function saveToStorage() {
+    localStorage.setItem('my_sentences', JSON.stringify(sentences));
+    updateList();
+  }
+
+  function updateList() {
+    document.getElementById('count').textContent = sentences.length;
+    const list = document.getElementById('sentenceList');
+    list.innerHTML = '';
+    sentences.forEach((s, idx) => {
+      const li = document.createElement('li');
+      li.className = 'sentence-item';
+      li.innerHTML = `<span>${s}</span><button onclick="deleteSentence(${idx})">&times;</button>`;
+      list.appendChild(li);
+    });
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (tab === 'practice') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('practiceTab').style.display = 'block';
+      document.getElementById('manageTab').style.display = 'none';
+    } else {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      document.getElementById('practiceTab').style.display = 'none';
+      document.getElementById('manageTab').style.display = 'block';
+    }
+  }
+
+  function getCurrentSentence() {
+    if (sentences.length === 0) return "";
+    return sentences[currentIndex % sentences.length];
+  }
+
+  function speakCurrent(rate = 1.0) {
+    const text = getCurrentSentence();
+    if (!text) return alert("Please add some sentences first!");
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = rate;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function cleanString(str) {
+    return str.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()?'"]/g, "").trim();
+  }
+
+  function checkAnswer() {
+    const original = getCurrentSentence();
+    const typed = document.getElementById('userInput').value;
+    if (!typed.trim()) return;
+
+    const originalWords = original.split(/\s+/);
+    const typedWords = typed.split(/\s+/);
+
+    const isMatch = cleanString(original) === cleanString(typed);
+    const feedbackEl = document.getElementById('feedback');
+    const titleEl = document.getElementById('feedbackTitle');
+    const contentEl = document.getElementById('feedbackContent');
+
+    feedbackEl.className = 'feedback show ' + (isMatch ? 'feedback-correct' : 'feedback-wrong');
+    titleEl.textContent = isMatch ? '🎉 Perfect! Well done.' : '💡 Not quite! Comparison:';
+
+    let resultHTML = "";
+    const maxLen = Math.max(originalWords.length, typedWords.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const expected = originalWords[i] || "";
+      const actual = typedWords[i] || "";
+
+      if (cleanString(expected) === cleanString(actual)) {
+        resultHTML += `<span class="diff-correct">${actual} </span>`;
+      } else {
+        if (actual) resultHTML += `<span class="diff-wrong">${actual}</span> `;
+        if (expected) resultHTML += `<span class="diff-expected">(${expected})</span> `;
+      }
+    }
+
+    contentEl.innerHTML = resultHTML;
+  }
+
+  function nextSentence() {
+    currentIndex = (currentIndex + 1) % sentences.length;
+    document.getElementById('userInput').value = "";
+    document.getElementById('feedback').className = 'feedback';
+    speakCurrent(1.0);
+  }
+
+  function addSentence() {
+    const input = document.getElementById('newSentenceInput');
+    const text = input.value.trim();
+    if (text) {
+      sentences.push(text);
+      saveToStorage();
+      input.value = "";
+      alert("Sentence added!");
+    }
+  }
+
+  function deleteSentence(index) {
+    sentences.splice(index, 1);
+    saveToStorage();
+  }
+
+  // Speech Recognition (Speak practice)
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRec();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (e) => {
+      document.getElementById('userInput').value = e.results[0][0].transcript;
+      stopListening();
+    };
+
+    recognition.onerror = () => stopListening();
+    recognition.onend = () => stopListening();
+  }
+
+  function toggleSpeechRecognition() {
+    if (!recognition) {
+      alert("Voice input is not supported in this browser. Try Chrome or Safari.");
+      return;
+    }
+    const btn = document.getElementById('micBtn');
+    if (!isListening) {
+      recognition.start();
+      isListening = true;
+      btn.classList.add('listening');
+      btn.innerText = "🛑 Stop";
+    } else {
+      recognition.stop();
+      stopListening();
+    }
+  }
+
+  function stopListening() {
+    isListening = false;
+    const btn = document.getElementById('micBtn');
+    btn.classList.remove('listening');
+    btn.innerText = "🎙️ Speak";
+  }
+
+  updateList();
+</script>
+
+</body>
+</html>
